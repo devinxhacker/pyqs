@@ -280,8 +280,7 @@ const SubjectPapersView = () => {
     }
 
     const handlePreview = (paper: Paper) => {
-        const trimmedUrl = trimRedundantUrlPath(paper.url)
-        const proxyUrl = `/api/download/proxy?url=${encodeURIComponent(trimmedUrl)}&disposition=inline&filename=${encodeURIComponent(paper.fileName)}`
+        const proxyUrl = `/api/download/proxy?url=${encodeURIComponent(paper.url)}&disposition=inline&filename=${encodeURIComponent(paper.fileName)}`
         setPreviewPdf({ url: proxyUrl, title: paper.fileName })
     }
 
