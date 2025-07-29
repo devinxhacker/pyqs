@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, useRef } from "react"
+import { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { usePapers } from "@/contexts/PaperContext"
 import Image from "next/image"
@@ -14,6 +14,7 @@ import {
     Square,
     X,
     Funnel,
+    Eye,
     FileZip,
 } from "@phosphor-icons/react"
 import {
@@ -23,6 +24,7 @@ import {
 } from "@/utils/download"
 import { Paper } from "@/types/paper"
 import FadeIn from "@/components/animations/FadeIn"
+import PdfPreviewModal from "./PdfPreviewModal"
 import { toast } from "sonner"
 
 // Utility function to trim redundant URL paths
@@ -59,6 +61,7 @@ const SubjectPapersView = () => {
     const [batchDownloadProgress, setBatchDownloadProgress] =
         useState<BatchDownloadProgress | null>(null)
     const [showSelectTuto, setShowSelectTuto] = useState(false)
+    const [previewPdf, setPreviewPdf] = useState<{ url: string; title: string } | null>(null)
     const previousSubjectRef = useRef<string | null>(null)
 
     useEffect(() => {
@@ -92,14 +95,14 @@ const SubjectPapersView = () => {
         }
     }
 
-    const scrollToTop = () => {
+    const scrollToTop = useCallback(() => {
         window.scrollTo(0, 0)
 
         const scrollContainer = document.getElementById("scrollable-content")
         if (scrollContainer) {
             scrollContainer.scrollTop = 0
         }
-    }
+    }, [])
 
     useEffect(() => {
         if (dataReady && meta?.standardSubjects) {
@@ -132,12 +135,12 @@ const SubjectPapersView = () => {
                 }, 1500)
             }
         }
-    }, [searchParams, dataReady, meta, router])
+    }, [searchParams, dataReady, meta, router, scrollToTop])
 
     // When component mounts, ensure we're at the top of the page
     useEffect(() => {
         scrollToTop()
-    }, [])
+    }, [scrollToTop])
 
     useEffect(() => {
         const checkScreenSize = () => {
@@ -292,6 +295,12 @@ const SubjectPapersView = () => {
         }
     }
 
+    const handlePreview = (paper: Paper) => {
+        const trimmedUrl = trimRedundantUrlPath(paper.url)
+        const proxyUrl = `/api/download/proxy?url=${encodeURIComponent(trimmedUrl)}&disposition=inline&filename=${encodeURIComponent(paper.fileName)}`
+        setPreviewPdf({ url: proxyUrl, title: paper.fileName })
+    }
+
     const toggleFilterItem = (key: "years" | "examTypes", value: string) => {
         setFilters((prev) => {
             const currentValues = [...prev[key]]
@@ -410,29 +419,43 @@ const SubjectPapersView = () => {
                             </h3>
                         </div>
                         {!isSelectMode ? (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleDownload(paper)
-                                }}
-                                disabled={downloadingFile === paper.fileName}
-                                className="mt-auto w-full flex items-center justify-center gap-2 bg-brand text-white rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200 hover:bg-brand/90 focus:outline-none focus:ring-2 focus:ring-brand/50 disabled:opacity-50"
-                            >
-                                <Download
-                                    size={16}
-                                    weight="duotone"
-                                    className={
+                            <div className="mt-auto w-full flex items-center gap-2">
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        handlePreview(paper)
+                                    }}
+                                    className="flex-1 flex items-center justify-center gap-2 bg-secondary text-content/80 border border-accent/40 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200 hover:bg-accent/20 hover:border-accent/70 focus:outline-none focus:ring-2 focus:ring-brand/50"
+                                >
+                                    <Eye size={16} weight="duotone" />
+                                    <span>Preview</span>
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleDownload(paper)
+                                    }}
+                                    disabled={
                                         downloadingFile === paper.fileName
-                                            ? "animate-spin"
-                                            : ""
                                     }
-                                />
-                                <span>
-                                    {downloadingFile === paper.fileName
-                                        ? "Downloading..."
-                                        : "Download"}
-                                </span>
-                            </button>
+                                    className="flex-1 flex items-center justify-center gap-2 bg-brand text-white rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200 hover:bg-brand/90 focus:outline-none focus:ring-2 focus:ring-brand/50 disabled:opacity-50"
+                                >
+                                    <Download
+                                        size={16}
+                                        weight="duotone"
+                                        className={
+                                            downloadingFile === paper.fileName
+                                                ? "animate-spin"
+                                                : ""
+                                        }
+                                    />
+                                    <span>
+                                        {downloadingFile === paper.fileName
+                                            ? "..."
+                                            : "Download"}
+                                    </span>
+                                </button>
+                            </div>
                         ) : null}
                     </div>
                 </FadeIn>
@@ -504,29 +527,45 @@ const SubjectPapersView = () => {
                             </div>
                         </div>
                         {!isSelectMode ? (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleDownload(paper)
-                                }}
-                                disabled={downloadingFile === paper.fileName}
-                                className="flex items-center gap-2 bg-brand text-white rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200 hover:bg-brand/90 focus:outline-none focus:ring-2 focus:ring-brand/50 disabled:opacity-50 flex-shrink-0"
-                            >
-                                <Download
-                                    size={16}
-                                    weight="duotone"
-                                    className={
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        handlePreview(paper)
+                                    }}
+                                    className="hidden sm:flex items-center gap-2 bg-secondary text-content/80 border border-accent/40 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200 hover:bg-accent/20 hover:border-accent/70 focus:outline-none focus:ring-2 focus:ring-brand/50"
+                                >
+                                    <Eye size={16} weight="duotone" />
+                                    <span className="hidden md:inline">
+                                        Preview
+                                    </span>
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleDownload(paper)
+                                    }}
+                                    disabled={
                                         downloadingFile === paper.fileName
-                                            ? "animate-spin"
-                                            : ""
                                     }
-                                />
-                                <span className="hidden sm:inline">
-                                    {downloadingFile === paper.fileName
-                                        ? "Downloading..."
-                                        : "Download"}
-                                </span>
-                            </button>
+                                    className="flex items-center gap-2 bg-brand text-white rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200 hover:bg-brand/90 focus:outline-none focus:ring-2 focus:ring-brand/50 disabled:opacity-50"
+                                >
+                                    <Download
+                                        size={16}
+                                        weight="duotone"
+                                        className={
+                                            downloadingFile === paper.fileName
+                                                ? "animate-spin"
+                                                : ""
+                                        }
+                                    />
+                                    <span className="hidden sm:inline">
+                                        {downloadingFile === paper.fileName
+                                            ? "..."
+                                            : "Download"}
+                                    </span>
+                                </button>
+                            </div>
                         ) : null}
                     </div>
                 </FadeIn>
@@ -1259,6 +1298,13 @@ const SubjectPapersView = () => {
 
             {/* Batch download progress overlay */}
             {batchDownloadProgress && renderBatchDownloadProgress()}
+
+            {/* PDF Preview Modal */}
+            <PdfPreviewModal
+                pdfUrl={previewPdf?.url ?? null}
+                title={previewPdf?.title}
+                onClose={() => setPreviewPdf(null)}
+            />
         </div>
     )
 }

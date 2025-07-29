@@ -105,7 +105,7 @@ export default function RootLayout({
                     content="width=device-width, initial-scale=1.0"
                 />
             </head>
-            <body className={inter.className} suppressHydrationWarning={true}>
+            <body className={inter.className}>
                 <PaperProvider>
                     <Suspense fallback={<div>Loading...</div>}>
                         <LoadingDataChecker>

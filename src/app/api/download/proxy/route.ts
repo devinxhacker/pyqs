@@ -4,7 +4,9 @@ import mime from 'mime-types';
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const url = searchParams.get('url');
-
+  const filename = searchParams.get('filename');
+  const disposition = searchParams.get('disposition') || 'attachment';
+  
   if (!url) {
     return NextResponse.json({ error: 'URL parameter is required' }, { status: 400 });
   }
@@ -26,13 +28,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Get the filename from the URL or Content-Disposition header
-    let fileName = '';
-    const contentDisposition = response.headers.get('content-disposition');
-    
-    if (contentDisposition) {
-      const match = contentDisposition.match(/filename="(.+?)"|filename=([^;]+)/);
-      if (match) {
-        fileName = match[1] || match[2] || '';
+    let fileName = filename || '';
+    if (!fileName) {
+      const contentDisposition = response.headers.get('content-disposition');
+      
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+?)"|filename=([^;]+)/);
+        if (match) {
+          fileName = match[1] || match[2] || '';
+        }
       }
     }
     
@@ -67,7 +71,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse(blob, {
       headers: {
         'Content-Type': contentType,
-        'Content-Disposition': `attachment; filename="${fileName}"`,
+        'Content-Disposition': `${disposition}; filename="${fileName}"`,
         'Cache-Control': 'no-store'
       }
     });
